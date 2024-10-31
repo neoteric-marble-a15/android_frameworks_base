@@ -27,6 +27,7 @@ import android.app.WindowConfiguration.WindowingMode;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
+import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
@@ -34,11 +35,16 @@ import android.graphics.drawable.VectorDrawable;
 import android.os.Handler;
 import android.util.Size;
 import android.view.Choreographer;
+import android.view.Display;
+import android.view.InsetsState;
+import android.view.MotionEvent;
 import android.view.SurfaceControl;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.window.WindowContainerTransaction;
 
+import com.android.internal.policy.ScreenDecorationsUtils;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.wm.shell.R;
 import com.android.wm.shell.ShellTaskOrganizer;
 import com.android.wm.shell.common.DisplayController;
@@ -177,6 +183,68 @@ public class CaptionWindowDecoration extends WindowDecoration<WindowDecorLinearL
                 shouldSetTaskPositionAndCrop);
     }
 
+    @VisibleForTesting
+    static void updateRelayoutParams(
+            RelayoutParams relayoutParams,
+            @NonNull Context context,
+            ActivityManager.RunningTaskInfo taskInfo,
+            boolean applyStartTransactionOnDraw,
+            boolean shouldSetTaskVisibilityPositionAndCrop,
+            boolean isStatusBarVisible,
+            boolean isKeyguardVisibleAndOccluded,
+            DisplayController displayController,
+            boolean hasGlobalFocus,
+            @NonNull Region globalExclusionRegion) {
+        relayoutParams.reset();
+        relayoutParams.mRunningTaskInfo = taskInfo;
+        relayoutParams.mLayoutResId = R.layout.caption_window_decor;
+        relayoutParams.mCaptionHeightId = getCaptionHeightIdStatic(taskInfo.getWindowingMode());
+        if (DesktopExperienceFlags.ENABLE_DYNAMIC_RADIUS_COMPUTATION_BUGFIX.isTrue()) {
+            relayoutParams.mShadowRadiusId = hasGlobalFocus
+                    ? R.dimen.freeform_decor_shadow_focused_thickness
+                    : R.dimen.freeform_decor_shadow_unfocused_thickness;
+        } else {
+            relayoutParams.mShadowRadius = hasGlobalFocus
+                    ? context.getResources().getDimensionPixelSize(
+                    R.dimen.freeform_decor_shadow_focused_thickness)
+                    : context.getResources().getDimensionPixelSize(
+                            R.dimen.freeform_decor_shadow_unfocused_thickness);
+        }
+        relayoutParams.mApplyStartTransactionOnDraw = applyStartTransactionOnDraw;
+        relayoutParams.mSetTaskVisibilityPositionAndCrop = shouldSetTaskVisibilityPositionAndCrop;
+        relayoutParams.mIsCaptionVisible = taskInfo.isFreeform()
+                || (isStatusBarVisible && !isKeyguardVisibleAndOccluded);
+        relayoutParams.mDisplayExclusionRegion.set(globalExclusionRegion);
+        relayoutParams.mCornerRadius =
+                getCornerRadius(context, displayController.getDisplay(taskInfo.displayId));
+
+        if (TaskInfoKt.isTransparentCaptionBarAppearance(taskInfo)) {
+            // If the app is requesting to customize the caption bar, allow input to fall
+            // through to the windows below so that the app can respond to input events on
+            // their custom content.
+            relayoutParams.mInputFeatures |= WindowManager.LayoutParams.INPUT_FEATURE_SPY;
+        }
+        final RelayoutParams.OccludingCaptionElement backButtonElement =
+                new RelayoutParams.OccludingCaptionElement();
+        backButtonElement.mWidthResId = R.dimen.caption_left_buttons_width;
+        backButtonElement.mAlignment = RelayoutParams.OccludingCaptionElement.Alignment.START;
+        relayoutParams.mOccludingCaptionElements.add(backButtonElement);
+        // Then, the right-aligned section (minimize, maximize and close buttons).
+        final RelayoutParams.OccludingCaptionElement controlsElement =
+                new RelayoutParams.OccludingCaptionElement();
+        controlsElement.mWidthResId = R.dimen.caption_right_buttons_width;
+        controlsElement.mAlignment = RelayoutParams.OccludingCaptionElement.Alignment.END;
+        relayoutParams.mOccludingCaptionElements.add(controlsElement);
+        relayoutParams.mCaptionTopPadding = getTopPadding(relayoutParams,
+                taskInfo.getConfiguration().windowConfiguration.getBounds(),
+                displayController.getInsetsState(taskInfo.displayId));
+        // Set opaque background for all freeform tasks to prevent freeform tasks below
+        // from being visible if freeform task window above is translucent.
+        // Otherwise if fluid resize is enabled, add a background to freeform tasks.
+        relayoutParams.mShouldSetBackground = DesktopModeStatus.shouldSetBackground(taskInfo);
+    }
+
+    @SuppressLint("MissingPermission")
     void relayout(RunningTaskInfo taskInfo,
             SurfaceControl.Transaction startT, SurfaceControl.Transaction finishT,
             boolean applyStartTransactionOnDraw, boolean setTaskCropAndPosition) {
@@ -191,13 +259,11 @@ public class CaptionWindowDecoration extends WindowDecoration<WindowDecorLinearL
         final SurfaceControl oldDecorationSurface = mDecorationContainerSurface;
         final WindowContainerTransaction wct = new WindowContainerTransaction();
 
-        mRelayoutParams.reset();
-        mRelayoutParams.mRunningTaskInfo = taskInfo;
-        mRelayoutParams.mLayoutResId = R.layout.caption_window_decor;
-        mRelayoutParams.mCaptionHeightId = getCaptionHeightId(taskInfo.getWindowingMode());
-        mRelayoutParams.mShadowRadiusId = shadowRadiusID;
-        mRelayoutParams.mApplyStartTransactionOnDraw = applyStartTransactionOnDraw;
-        mRelayoutParams.mSetTaskPositionAndCrop = setTaskCropAndPosition;
+        updateRelayoutParams(mRelayoutParams, mContext, taskInfo, applyStartTransactionOnDraw,
+                shouldSetTaskVisibilityPositionAndCrop, mIsStatusBarVisible,
+                mIsKeyguardVisibleAndOccluded,
+                mDisplayController, hasGlobalFocus,
+                globalExclusionRegion);
 
         relayout(mRelayoutParams, startT, finishT, wct, oldRootView, mResult);
         // After this line, mTaskInfo is up-to-date and should be used instead of taskInfo
@@ -240,6 +306,19 @@ public class CaptionWindowDecoration extends WindowDecoration<WindowDecorLinearL
         mDragResizeListener.setGeometry(new DragResizeWindowGeometry(0 /* taskCornerRadius */,
                 new Size(mResult.mWidth, mResult.mHeight), getResizeEdgeHandleSize(res),
                 getFineResizeCornerSize(res), getLargeResizeCornerSize(res)), touchSlop);
+    }
+
+    private static int getCornerRadius(Context context, Display display) {
+        // Show rounded corners only on the internal display as we can't get rounded corners for
+        // external displays.
+        if (display.getType() != Display.TYPE_INTERNAL) {
+            return 0;
+        }
+        final TypedArray ta = context.obtainStyledAttributes(
+                new int[]{android.R.attr.dialogCornerRadius});
+        final int cornerRadius = ta.getDimensionPixelSize(0, 0);
+        ta.recycle();
+        return cornerRadius;
     }
 
     /**
