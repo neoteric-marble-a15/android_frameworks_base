@@ -481,4 +481,9 @@ public class SystemUIApplication extends Application implements
 
         n.addExtras(extras);
     }
+
+    @NonNull
+    public SysUIComponent getSysUIComponent() {
+        return mSysUIComponent;
+    }
 }
