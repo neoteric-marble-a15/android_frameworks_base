@@ -41,6 +41,7 @@ import com.android.systemui.dump.DumpManager;
 import com.android.systemui.flags.FeatureFlags;
 import com.android.systemui.keyguard.KeyguardUnlockAnimationController;
 import com.android.systemui.res.R;
+import com.android.systemui.util.ScrimUtils;
 import com.android.systemui.user.domain.interactor.SelectedUserInteractor;
 
 import dagger.Lazy;
@@ -241,6 +242,7 @@ public class KeyguardStateControllerImpl implements KeyguardStateController {
                     keyguardFadingAway ? 1 : 0);
             mKeyguardFadingAway = keyguardFadingAway;
             invokeForEachCallback(Callback::onKeyguardFadingAwayChanged);
+            ScrimUtils.get().onKeyguardFadingAwayChanged(keyguardFadingAway);
         }
     }
 
@@ -355,6 +357,7 @@ public class KeyguardStateControllerImpl implements KeyguardStateController {
                     keyguardGoingAway ? 1 : 0);
             mKeyguardGoingAway = keyguardGoingAway;
             invokeForEachCallback(Callback::onKeyguardGoingAwayChanged);
+            ScrimUtils.get().onKeyguardGoingAwayChanged(keyguardGoingAway);
         }
     }
 
@@ -364,6 +367,7 @@ public class KeyguardStateControllerImpl implements KeyguardStateController {
             mPrimaryBouncerShowing = showing;
 
             invokeForEachCallback(Callback::onPrimaryBouncerShowingChanged);
+            ScrimUtils.get().onPrimaryBouncerShowingChanged(showing);
         }
     }
 
