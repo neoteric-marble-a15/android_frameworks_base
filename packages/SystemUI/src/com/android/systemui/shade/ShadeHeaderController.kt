@@ -366,6 +366,9 @@ constructor(
         iconManager = tintedIconManagerFactory.create(iconContainer, StatusBarLocation.QS)
         iconManager.setTint(fgColor, bgColor)
 
+        iconContainer.setIsUsingQs(true)
+        iconContainer.setNetworkTrafficColor(fgColor)
+
         if (!NewStatusBarIcons.isEnabled) {
             batteryMeterViewController.init()
 
@@ -461,6 +464,7 @@ constructor(
         demoModeController.removeCallback(demoModeReceiver)
         statusBarIconController.removeIconGroup(iconManager)
         nextAlarmController.removeCallback(nextAlarmCallback)
+        iconContainer.setIsUsingQs(false);
         systemIconsHoverContainer.setOnHoverListener(null)
     }
 
@@ -568,6 +572,9 @@ constructor(
 
     private fun onShadeExpandedChanged() {
         if (qsVisible) {
+            val textColorPrimary = Utils.getColorAttrDefaultColor(context, android.R.attr.textColorPrimary)
+            iconContainer.setIsUsingQs(true)
+            iconContainer.setNetworkTrafficColor(textColorPrimary)
             privacyIconsController.startListening()
         } else {
             privacyIconsController.stopListening()
@@ -672,6 +679,8 @@ constructor(
         )
         clock.setTextColor(textColorPrimary)
         date.setTextColor(textColorPrimary)
+        iconContainer.setIsUsingQs(true)
+        iconContainer.setNetworkTrafficColor(textColorPrimary)
         mShadeCarrierGroup.updateColors(textColorPrimary, colorStateList)
         batteryIcon.updateColors(textColorPrimary, textColorSecondary, textColorPrimary)
     }
