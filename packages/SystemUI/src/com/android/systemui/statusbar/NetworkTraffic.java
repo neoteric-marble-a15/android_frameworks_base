@@ -16,17 +16,15 @@
 
 package com.android.systemui.statusbar;
 
-import static com.android.systemui.statusbar.StatusBarIconView.STATE_DOT;
-import static com.android.systemui.statusbar.StatusBarIconView.STATE_HIDDEN;
 import static com.android.systemui.statusbar.StatusBarIconView.STATE_ICON;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Rect;
-import android.graphics.drawable.Drawable;
 import android.graphics.PorterDuff;
 import android.graphics.Typeface;
 import android.net.ConnectivityManager;
@@ -42,22 +40,22 @@ import android.provider.Settings;
 import android.text.Spanned;
 import android.text.SpannableString;
 import android.text.TextUtils;
-import android.text.style.RelativeSizeSpan;
+import android.text.style.AbsoluteSizeSpan;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.TextView;
 
-import androidx.core.content.res.ResourcesCompat;
-
 import com.android.systemui.Dependency;
+import com.android.systemui.SystemUIApplication;
 import com.android.systemui.res.R;
 import com.android.systemui.plugins.DarkIconDispatcher;
 import com.android.systemui.plugins.DarkIconDispatcher.DarkReceiver;
+import com.android.systemui.plugins.statusbar.StatusBarStateController;
 import com.android.systemui.statusbar.StatusIconDisplayable;
-import com.android.systemui.statusbar.phone.PhoneStatusBarPolicy.NetworkTrafficState;
-import com.android.keyguard.KeyguardUpdateMonitor;
-import com.android.keyguard.KeyguardUpdateMonitorCallback;
+import com.android.systemui.statusbar.StatusBarState;
+import com.android.systemui.statusbar.phone.StatusBarKeyguardViewManager;
+import com.android.systemui.statusbar.phone.StatusBarKeyguardViewManager.KeyguardViewManagerCallback;
 
 import com.android.systemui.tuner.TunerService;
 
@@ -100,8 +98,6 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
             "system:" + Settings.System.NETWORK_TRAFFIC_UNITS;
     private static final String NETWORK_TRAFFIC_REFRESH_INTERVAL =
             "system:" + Settings.System.NETWORK_TRAFFIC_REFRESH_INTERVAL;
-    private static final String NETWORK_TRAFFIC_HIDEARROW =
-            "system:" + Settings.System.NETWORK_TRAFFIC_HIDEARROW;
 
     private int mMode = MODE_UPSTREAM_AND_DOWNSTREAM;
     private int mSubMode = MODE_UPSTREAM_AND_DOWNSTREAM;
@@ -115,23 +111,19 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
     private boolean mAutoHide;
     private long mAutoHideThreshold;
     private int mUnits;
-    private int mIconTint = 0;
-    private int newTint = Color.WHITE;
-
-    private Drawable mDrawable;
+    private int mTint = Color.WHITE;
 
     private int mRefreshInterval = 2;
 
     private boolean mAttached;
-    private boolean mHideArrows;
 
     private boolean mVisible = true;
 
     private ConnectivityManager mConnectivityManager;
     private final Handler mTrafficHandler;
 
-    private RelativeSizeSpan mSpeedRelativeSizeSpan = new RelativeSizeSpan(0.70f);
-    private RelativeSizeSpan mUnitRelativeSizeSpan = new RelativeSizeSpan(0.65f);
+    private AbsoluteSizeSpan mSpeedAbsoluteSizeSpan = new AbsoluteSizeSpan(8, true);
+    private AbsoluteSizeSpan mUnitAbsoluteSizeSpan = new AbsoluteSizeSpan(6, true);
 
     private boolean mEnabled = false;
     private boolean mConnectionAvailable = true;
@@ -142,12 +134,35 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
     private boolean mNetworksChanged = true;
 
     private int mVisibleState = -1;
-    private boolean mColorIsStatic;
-
-    private KeyguardUpdateMonitor mKeyguardUpdateMonitor;
-    private boolean mKeyguardShowing;
 
     private String mSlot;
+
+    private Configuration mConfiguration;
+    private boolean isLightMode;
+
+    private StatusBarStateController mStatusBarStateController;
+    private StatusBarKeyguardViewManager mStatusBarKeyguardViewManager;
+
+    private final StatusBarStateController.StateListener mStateListener =
+            new StatusBarStateController.StateListener() {
+        @Override
+        public void onStateChanged(int newState) {
+            onDarkChanged(new ArrayList<>(), 0f, mTint);
+        }
+        
+        @Override
+        public void onExpandedChanged(boolean isExpanded) {
+            onDarkChanged(new ArrayList<>(), 0f, mTint);
+        }
+    };
+    
+    private final KeyguardViewManagerCallback mKeyguardViewManagerCallback =
+            new KeyguardViewManagerCallback() {
+        @Override
+        public void onQSExpansionChanged(float qsExpansion) {
+            onDarkChanged(new ArrayList<>(), 0f, mTint);
+        }
+    };
 
     public NetworkTraffic(Context context) {
         this(context, null);
@@ -160,6 +175,9 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
     public NetworkTraffic(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
         mContext = context;
+        mConfiguration = new Configuration(context.getResources().getConfiguration());
+        isLightMode = (mConfiguration.uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_NO;
         mConnectivityManager =
                 (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
         mTrafficHandler = new Handler(mContext.getMainLooper()) {
@@ -271,7 +289,6 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
                         mTrafficActive != trafficactive)) {
                     mSubMode = submode;
                     mTrafficActive = trafficactive;
-                    setTrafficDrawable();
                 }
 
                 // Schedule periodic refresh
@@ -331,11 +348,11 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
                     formatSpeed = decimalFormat.format(speed / (float)Kilo);
                 }
                 spanSpeedString = new SpannableString(formatSpeed);
-                spanSpeedString.setSpan(mSpeedRelativeSizeSpan, 0, (formatSpeed).length(),
+                spanSpeedString.setSpan(mSpeedAbsoluteSizeSpan, 0, (formatSpeed).length(),
                         Spanned.SPAN_INCLUSIVE_INCLUSIVE);
 
                 spanUnitString = new SpannableString(unit);
-                spanUnitString.setSpan(mUnitRelativeSizeSpan, 0, (unit).length(),
+                spanUnitString.setSpan(mUnitAbsoluteSizeSpan, 0, (unit).length(),
                         Spanned.SPAN_INCLUSIVE_INCLUSIVE);
                 return TextUtils.concat(spanSpeedString, "\n", spanUnitString);
             }
@@ -345,6 +362,9 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
     public static NetworkTraffic fromContext(Context context, String slot) {
         NetworkTraffic v = new NetworkTraffic(context);
         v.setSlot(slot);
+        v.setGravity(Gravity.CENTER);
+        int paddingHorizontal = (int) (2 * context.getResources().getDisplayMetrics().density);
+        v.setPadding(paddingHorizontal, 0, paddingHorizontal, 0);
         v.setVisibleState(STATE_ICON);
         return v;
     }
@@ -353,21 +373,36 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
         mSlot = slot;
     }
 
-    @Override
-    public void onDarkChanged(ArrayList<Rect> areas, float darkIntensity, int tint) {
-        if (mColorIsStatic) {
-            return;
-        }
-        newTint = DarkIconDispatcher.getTint(areas, this, tint);
-        checkUpdateTrafficDrawable();
+    private boolean isShadeInQs() {
+        return (mStatusBarStateController.isExpanded()
+                && mStatusBarStateController.getState() == StatusBarState.SHADE)
+                || (mStatusBarStateController.getState() == StatusBarState.KEYGUARD 
+                && (mStatusBarKeyguardViewManager.getQsExpansion() > 0f))
+                || mStatusBarStateController.getState() == StatusBarState.SHADE_LOCKED;
     }
 
     @Override
-    public void setStaticDrawableColor(int color) {
-        mColorIsStatic = true;
-        newTint = color;
-        checkUpdateTrafficDrawable();
+    protected void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        mConfiguration.setTo(newConfig);
+        isLightMode = (newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_NO;
+        onDarkChanged(new ArrayList<>(), 0f, mTint);
     }
+
+    @Override
+    public void onDarkChanged(ArrayList<Rect> areas, float darkIntensity, int tint) {
+        if (isShadeInQs() && isLightMode) {
+            setTextColor(Color.BLACK);
+            return;
+        }
+
+        mTint = DarkIconDispatcher.getTint(areas, this, tint);
+        setTextColor(mTint);
+    }
+
+    @Override
+    public void setStaticDrawableColor(int color) {}
 
     @Override
     public void setDecorColor(int color) {
@@ -450,7 +485,6 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
             tunerService.addTunable(this, NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD);
             tunerService.addTunable(this, NETWORK_TRAFFIC_UNITS);
             tunerService.addTunable(this, NETWORK_TRAFFIC_REFRESH_INTERVAL);
-            tunerService.addTunable(this, NETWORK_TRAFFIC_HIDEARROW);
 
             mConnectivityManager.registerNetworkCallback(mRequest, mNetworkCallback);
             mConnectivityManager.registerDefaultNetworkCallback(mDefaultNetworkCallback);
@@ -461,8 +495,13 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
             filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
             mContext.registerReceiver(mIntentReceiver, filter, null, mTrafficHandler);
 
-            mKeyguardUpdateMonitor = Dependency.get(KeyguardUpdateMonitor.class);
-            mKeyguardUpdateMonitor.registerCallback(mUpdateCallback);
+            mStatusBarStateController = Dependency.get(StatusBarStateController.class);
+            mStatusBarStateController.addCallback(mStateListener);
+
+            mStatusBarKeyguardViewManager = Dependency.get(StatusBarKeyguardViewManager.class);
+            mStatusBarKeyguardViewManager.addCallback(mKeyguardViewManagerCallback);
+
+            Dependency.get(DarkIconDispatcher.class).addDarkReceiver(this);
 
             updateViews();
         }
@@ -473,50 +512,23 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
         super.onDetachedFromWindow();
         if (mAttached) {
             clearHandlerCallbacks();
-            if (mKeyguardUpdateMonitor != null) {
-                mKeyguardUpdateMonitor.removeCallback(mUpdateCallback);
-                mKeyguardUpdateMonitor = null;
-            }
             mContext.unregisterReceiver(mIntentReceiver);
             mConnectivityManager.unregisterNetworkCallback(mDefaultNetworkCallback);
             mConnectivityManager.unregisterNetworkCallback(mNetworkCallback);
+            mStatusBarStateController.removeCallback(mStateListener);
+            mStatusBarKeyguardViewManager.removeCallback(mKeyguardViewManagerCallback);
+            Dependency.get(DarkIconDispatcher.class).removeDarkReceiver(this);
             Dependency.get(TunerService.class).removeTunable(this);
-            mDrawable = null;
-            setCompoundDrawables(null, null, null, null);
             mAttached = false;
         }
     }
 
-    public void applyNetworkTrafficState(NetworkTrafficState state) {
-        // mEnabled and state.visible will have same values, no need to set again
-        updateVisibility();
-        checkUpdateTrafficDrawable();
-    }
-
-    private final KeyguardUpdateMonitorCallback mUpdateCallback =
-            new KeyguardUpdateMonitorCallback() {
-                @Override
-                public void onKeyguardVisibilityChanged(boolean showing) {
-                    mKeyguardShowing = showing;
-                    updateVisibility();
-                }
-            };
-
     private void updateVisibility() {
-        boolean visible = mEnabled && mIsActive && getText() != ""
-                    && !mKeyguardShowing 
+        boolean visible = mEnabled && mIsActive && !TextUtils.isEmpty(getText())
                     && mVisibleState == STATE_ICON;
         if (visible != mVisible) {
             mVisible = visible;
             setVisibility(mVisible ? View.VISIBLE : View.GONE);
-        }
-    }
-
-    private void checkUpdateTrafficDrawable() {
-        // Wait for icon to be visible and tint to be changed
-        if (mVisible && mIconTint != newTint) {
-            mIconTint = newTint;
-            updateTrafficDrawable();
         }
     }
 
@@ -543,9 +555,6 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
                     String txtFont = getResources().getString(com.android.internal.R.string.config_bodyFontFamily);
                     setTypeface(Typeface.create(txtFont, Typeface.BOLD));
                     setLineSpacing(0.80f, 0.80f);
-                    setLayoutDirection(View.LAYOUT_DIRECTION_LOCALE);
-                    setTextDirection(View.TEXT_DIRECTION_LOCALE);
-                    setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
                 }
                 updateViews();
                 break;
@@ -553,7 +562,6 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
                 mMode =
                         TunerService.parseInteger(newValue, 0);
                 updateViews();
-                setTrafficDrawable();
                 break;
             case NETWORK_TRAFFIC_AUTOHIDE:
                 mAutoHide =
@@ -576,16 +584,6 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
                         TunerService.parseInteger(newValue, 2);
                 updateViews();
                 break;
-            case NETWORK_TRAFFIC_HIDEARROW:
-                mHideArrows =
-                        TunerService.parseIntegerSwitch(newValue, false);
-                if (!mHideArrows) {
-                    setGravity(Gravity.END|Gravity.CENTER_VERTICAL);
-                } else {
-                    setGravity(Gravity.CENTER);
-                }
-                setTrafficDrawable();
-                break;
             default:
                 break;
         }
@@ -604,48 +602,6 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable,
 
     private void clearHandlerCallbacks() {
         mTrafficHandler.removeCallbacksAndMessages(null);
-    }
-
-    private void setTrafficDrawable() {
-        final int drawableResId;
-
-        if (mHideArrows) {
-            drawableResId = 0;
-        } else if (!mTrafficActive) {
-            drawableResId = R.drawable.stat_sys_network_traffic;
-        } else if (mMode == MODE_UPSTREAM_ONLY || mSubMode == MODE_UPSTREAM_ONLY) {
-            drawableResId = R.drawable.stat_sys_network_traffic_up;
-        } else if (mMode == MODE_DOWNSTREAM_ONLY || mSubMode == MODE_DOWNSTREAM_ONLY) {
-            drawableResId = R.drawable.stat_sys_network_traffic_down;
-        } else if (mMode == MODE_UPSTREAM_AND_DOWNSTREAM) {
-            drawableResId = R.drawable.stat_sys_network_traffic_updown;
-        } else {
-            drawableResId = 0;
-        }
-        final Drawable drawable = mHideArrows ? null
-            : ResourcesCompat.getDrawable(getResources(), drawableResId, getContext().getTheme());
-        if (mDrawable != drawable || mIconTint != newTint) {
-            mDrawable = drawable;
-            mIconTint = newTint;
-            setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, mDrawable, null);
-            updateTrafficDrawable();
-        }
-    }
-
-    public void setTint(int tint) {
-        newTint = tint;
-        // Wait for icon to be visible and tint to be changed
-        if (mVisible && mIconTint != newTint) {
-            mIconTint = newTint;
-            updateTrafficDrawable();
-        }
-    }
-
-    private void updateTrafficDrawable() {
-        if (mDrawable != null) {
-            mDrawable.setColorFilter(mIconTint, PorterDuff.Mode.MULTIPLY);
-        }
-        setTextColor(mIconTint);
     }
 
     private static class LinkPropertiesHolder {

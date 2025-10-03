@@ -6765,12 +6765,6 @@ public final class Settings {
          */
         public static final String NETWORK_TRAFFIC_REFRESH_INTERVAL = "network_traffic_refresh_interval";
 
-        /**
-         * Whether to hide arrows for network traffic
-         * @hide
-         */
-        public static final String NETWORK_TRAFFIC_HIDEARROW = "network_traffic_hidearrow";
-
 	/**
          * Whether to display cross sign for a data disabled connection
          * @hide
