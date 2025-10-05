@@ -126,6 +126,7 @@ public class SystemSettings {
 		Settings.System.SWIPE_TYPE,
         	Settings.System.HAPTIC_ON_SLIDER,
         	Settings.System.SMALL_LANDSCAPE_NOTIFICATION,
+            Settings.System.NOTIFICATION_SOUND_VIB_SCREEN_ON,
 		Settings.System.QS_SHOW_BRIGHTNESS,
         	Settings.System.QS_BRIGHTNESS_POSITION_BOTTOM,
                 Settings.System.RINGTONE_VIBRATION_PATTERN,

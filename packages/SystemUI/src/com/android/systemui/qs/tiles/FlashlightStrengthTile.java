@@ -46,13 +46,13 @@ import com.android.systemui.plugins.statusbar.StatusBarStateController;
 import com.android.systemui.qs.QSHost;
 import com.android.systemui.qs.QsEventLogger;
 import com.android.systemui.qs.logging.QSLogger;
-import com.android.systemui.qs.tileimpl.SlideableQSTile;
+import com.android.systemui.qs.tileimpl.TouchableQSTile;
 import com.android.systemui.res.R;
 import com.android.systemui.statusbar.policy.FlashlightController;
 
 import javax.inject.Inject;
 
-public class FlashlightStrengthTile extends FlashlightTile implements SlideableQSTile {
+public class FlashlightStrengthTile extends FlashlightTile implements TouchableQSTile {
 
     public static final String TILE_SPEC = "flashlight";
 
@@ -68,8 +68,8 @@ public class FlashlightStrengthTile extends FlashlightTile implements SlideableQ
     private final Looper mBgLooper;
     private boolean mSupportsSettingFlashLevel;
     private boolean mRegistered = false;
-    private int mDefaultLevel = 0;
-    private int mMaxLevel = 1;
+    private int mDefaultLevel;
+    private int mMaxLevel;
     private float mCurrentPercent;
     private int mCurrentLevel;
     private boolean mClicked = true;
@@ -227,11 +227,6 @@ public class FlashlightStrengthTile extends FlashlightTile implements SlideableQ
     @Override
     public float getSettingsDefaultValue() {
         return ((float) mDefaultLevel) / ((float) mMaxLevel);
-    }
-
-    @Override
-    public boolean isSlideable() {
-        return mSupportsSettingFlashLevel;
     }
 
     @Override

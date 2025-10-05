@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 public final class AttestationService extends SystemService {
 
     private static final String TAG = AttestationService.class.getSimpleName();
-    private static final String API = "https://raw.githubusercontent.com/Neoteric-OS/android_vendor_gms_spoof/refs/heads/master/gms_certified_props.json";
+    private static final String API = "https://raw.githubusercontent.com/neoteric-marble-a15/android_vendor_gms_spoof/refs/heads/master/gms_certified_props.json";
 
     private static final String DATA_FILE = "gms_certified_props.json";
 

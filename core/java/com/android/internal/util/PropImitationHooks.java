@@ -19,6 +19,7 @@
 package com.android.internal.util;
 
 import android.app.ActivityTaskManager;
+import android.app.ActivityThread;
 import android.app.Application;
 import android.app.TaskStackListener;
 import android.content.ComponentName;
@@ -28,6 +29,7 @@ import android.os.Build;
 import android.os.Binder;
 import android.os.Environment;
 import android.os.Process;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -47,6 +49,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -263,8 +266,12 @@ public class PropImitationHooks {
          * Set Stock Fingerprint for ARCore
          * Set custom model for Netflix
          */
-        if (sIsGms) {
-            setCertifiedPropsForGms(context);
+        if (sIsGms || sIsFinsky) {
+            if (!android.os.Process.isIsolated()) {
+                setPlayIntegrityProps(context);
+            } else {
+                dlog("Not setting Play Integrity props in isolated process");
+            }
         } else if (!sStockFp.isEmpty() && packageName.equals(PACKAGE_ARCORE)) {
             dlog("Setting stock fingerprint for: " + packageName);
             setPropValue("FINGERPRINT", sStockFp);
@@ -328,7 +335,12 @@ public class PropImitationHooks {
         }
     }
 
-    private static void setCertifiedPropsForGms(Context context) {
+    private static void setPlayIntegrityProps(Context context) {
+        // Guard: isolated processes cannot access content providers (Settings.*).
+        if (android.os.Process.isIsolated()) {
+            dlog("Skipping setPlayIntegrityProps in isolated process");
+            return;
+        }        
         File dataFile = new File(Environment.getDataSystemDirectory(), DATA_FILE);
         String savedProps = readFromFile(dataFile);
 
@@ -371,10 +383,10 @@ public class PropImitationHooks {
         };
 
         if (!was) {
-            dlog("Spoofing build for GMS");
+            dlog("Spoofing build for GMS / Finsky");
             setCertifiedProps();
         } else {
-            dlog("Skip spoofing build for GMS, because GmsAddAccountActivityOnTop");
+            dlog("Skip spoofing build for GMS / Finsky, because GmsAddAccountActivityOnTop");
         }
 
         try {
@@ -411,19 +423,24 @@ public class PropImitationHooks {
     }
 
     public static boolean shouldBypassTaskPermission(Context context) {
-        // GMS doesn't have MANAGE_ACTIVITY_TASKS permission
+        // GMS/Finsky don't have MANAGE_ACTIVITY_TASKS permission
         final int callingUid = Binder.getCallingUid();
-        final int gmsUid;
 
         try {
-            gmsUid = context.getPackageManager().getApplicationInfo(PACKAGE_GMS, 0).uid;
-            dlog("shouldBypassTaskPermission: gmsUid:" + gmsUid + " callingUid:" + callingUid);
+            int gmsUid = context.getPackageManager()
+                    .getApplicationInfo(PACKAGE_GMS, 0).uid;
+            int finskyUid = context.getPackageManager()
+                    .getApplicationInfo(PACKAGE_FINSKY, 0).uid;
+
+            dlog("shouldBypassTaskPermission: gmsUid:" + gmsUid +
+                    " finskyUid:" + finskyUid +
+                    " callingUid:" + callingUid);
+
+            return (callingUid == gmsUid || callingUid == finskyUid);
         } catch (Exception e) {
-            Log.e(TAG, "shouldBypassTaskPermission: unable to get gms uid", e);
+            Log.e(TAG, "shouldBypassTaskPermission: unable to get gms/finsky uid", e);
             return false;
         }
-
-        return gmsUid == callingUid;
     }
 
     private static String readFromFile(File file) {
@@ -442,21 +459,28 @@ public class PropImitationHooks {
         return content.toString();
     }
 
-    private static boolean isCallerSafetyNet() {
-        return sIsGms && Arrays.stream(Thread.currentThread().getStackTrace())
-                .anyMatch(elem -> elem.getClassName().contains("DroidGuard"));
+    private static boolean isCallerPlayIntegrity() {
+        return Arrays.stream(Thread.currentThread().getStackTrace())
+                .map(StackTraceElement::getClassName)
+                .anyMatch(name -> name.toLowerCase(Locale.US).contains("droidguard"));
     }
 
     public static void onEngineGetCertificateChain() {
-        // If a keybox is found, don't block key attestation
-        if (KeyProviderManager.isKeyboxAvailable()) {
-            dlog("Key attestation blocking is disabled because a keybox is defined to spoof");
+        Context context = ActivityThread.currentApplication();
+        if (context == null) {
+            Log.e(TAG, "Context is null in onEngineGetCertificateChain");
             return;
         }
 
-        // Check stack for SafetyNet or Play Integrity
-        if (isCallerSafetyNet() || sIsFinsky) {
-            dlog("Blocked key attestation sIsGms=" + sIsGms + " sIsFinsky=" + sIsFinsky);
+        if ((Settings.Secure.getInt(context.getContentResolver(), Settings.Secure.GMS_CERT_CHAIN, 0) == 1)
+                && KeyProviderManager.isKeyboxAvailable()) {
+            dlog("Allowing gms / finsky to get cert chain");
+            return;
+        }
+
+        // Check stack for Play Integrity
+        if (isCallerPlayIntegrity()) {
+            dlog("Blocked key attestation for play integrity");
             throw new UnsupportedOperationException();
         }
     }

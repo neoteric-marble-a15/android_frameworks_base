@@ -48,9 +48,11 @@ import com.android.systemui.qs.customize.QSCustomizerController;
 import com.android.systemui.qs.external.CustomTile;
 import com.android.systemui.qs.logging.QSLogger;
 import com.android.systemui.qs.tiles.FlashlightStrengthTile;
+import com.android.systemui.qs.tiles.RingerModeTile;
 import com.android.systemui.qs.tileimpl.QSTileViewImpl;
+import com.android.systemui.qs.tileimpl.RingerQSTileViewImpl;
 import com.android.systemui.qs.tileimpl.SliderQSTileViewImpl;
-import com.android.systemui.qs.tileimpl.SlideableQSTile;
+import com.android.systemui.qs.tileimpl.TouchableQSTile;
 import com.android.systemui.scene.shared.flag.SceneContainerFlag;
 import com.android.systemui.statusbar.policy.SplitShadeStateController;
 import com.android.systemui.util.ViewController;
@@ -403,17 +405,7 @@ public abstract class QSPanelControllerBase<T extends QSPanel> extends ViewContr
         } else {
             longPressEffect = null;
         }
-        final QSTileViewImpl tileView;
-        if (FlashlightStrengthTile.TILE_SPEC.equals(tile.getTileSpec())) {
-            SlideableQSTile slideableQSTile = (SlideableQSTile) tile;
-            tileView = new SliderQSTileViewImpl(
-                    getContext(),
-                    collapsedView,
-                    slideableQSTile);
-        } else {
-            tileView = new QSTileViewImpl(
-                    getContext(), collapsedView, longPressEffect);
-        }
+        final QSTileView tileView = createTileView(tile, collapsedView, longPressEffect);
         final TileRecord r = new TileRecord(tile, tileView);
         // TODO(b/250618218): Remove the QSLogger in QSTileViewImpl once we know the root cause of
         // b/250618218.
@@ -423,11 +415,30 @@ public abstract class QSPanelControllerBase<T extends QSPanel> extends ViewContr
                 qsTileView.setQsLogger(mQSLogger);
             }
         } catch (ClassCastException e) {
-            Log.e(TAG, "Failed to cast QSTileView to QSTileViewImpl", e);
+            // Log.e(TAG, "Failed to cast QSTileView to QSTileViewImpl", e);
         }
         mView.addTile(r);
         mRecords.add(r);
         mCachedSpecs = getTilesSpecs();
+    }
+
+    private QSTileView createTileView(final QSTile tile, boolean collapsedView,
+            QSLongPressEffect longPressEffect) {
+        switch (tile.getTileSpec()) {
+            case FlashlightStrengthTile.TILE_SPEC:
+                TouchableQSTile touchableTile = (TouchableQSTile) tile;
+                return new SliderQSTileViewImpl(
+                        getContext(),
+                        collapsedView,
+                        touchableTile.getTouchListener(),
+                        touchableTile.getSettingsSystemKey(),
+                        touchableTile.getSettingsDefaultValue());
+            case RingerModeTile.TILE_SPEC:
+                return new RingerQSTileViewImpl(getContext());
+            default:
+                return new QSTileViewImpl(
+                        getContext(), collapsedView, longPressEffect);
+        }
     }
 
     /** */

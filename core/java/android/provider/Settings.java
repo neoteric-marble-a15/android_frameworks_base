@@ -6719,6 +6719,18 @@ public final class Settings {
                 "status_bar_ticker_tick_duration";
 
         /**
+         * Whether to play notification sound and vibrations when the screen is on
+         * @hide
+         */
+        public static final String NOTIFICATION_SOUND_VIB_SCREEN_ON = "notification_sound_vib_screen_on";
+
+        /**
+         * Enable/disable Bluetooth Battery bar
+         * @hide
+         */
+        public static final String BLUETOOTH_SHOW_BATTERY = "bluetooth_show_battery";
+
+        /**
          * Keys we no longer back up under the current schema, but want to continue to
          * process when restoring historical backup datasets.
          *
@@ -11820,6 +11832,18 @@ public final class Settings {
         public static final String DISPLAY_COLOR_BALANCE_BLUE = "display_color_balance_blue";
 
         /**
+         * Display color temperature in Kelvin, from 3000 to 9000, defaults to 6500.
+         * @hide
+         */
+        public static final String DISPLAY_COLOR_TEMPERATURE = "display_color_temperature";
+
+        /**
+         * Display color saturation in int, from 0 to 200, defaults to 100.
+         * @hide
+         */
+        public static final String DISPLAY_COLOR_SATURATION = "display_color_saturation";
+
+        /**
          * Control whether display white balance is currently enabled.
          * @hide
          */
@@ -12897,6 +12921,31 @@ public final class Settings {
         public static final String VPN_ENFORCE_DNS_STORE = "vpn_enforce_dns_store";
 
         /**
+         * Whether to show privacy indicator for location
+         * @hide
+         */
+        public static final String ENABLE_LOCATION_PRIVACY_INDICATOR = "enable_location_privacy_indicator";
+
+        /**
+         * Whether to show privacy indicator for camera
+         * @hide
+         */
+        public static final String ENABLE_CAMERA_PRIVACY_INDICATOR = "enable_camera_privacy_indicator";
+
+        /**
+         * Whether to show privacy indicator for media projection
+         * @hide
+         */
+        public static final String ENABLE_PROJECTION_PRIVACY_INDICATOR = "enable_projection_privacy_indicator";
+
+        /**
+         * Whether to allow gms to get certificate chain or not.
+         * @hide
+         */
+        @Readable
+        public static final String GMS_CERT_CHAIN = "gms_cert_chain";
+
+        /**
          * Keys we no longer back up under the current schema, but want to continue to
          * process when restoring historical backup datasets.
          *
@@ -13350,6 +13399,12 @@ public final class Settings {
          * @hide
          */
         public static final String NAVIGATION_BAR_HINT = "navigation_bar_hint";
+        
+        /**
+         * Show navigation space below IME
+         * @hide
+         */
+        public static final String NAVBAR_IME_SPACE = "navbar_ime_space";
 
         /**
          * Whether tethering is allowed to use VPN upstreams

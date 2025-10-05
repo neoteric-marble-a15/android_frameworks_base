@@ -57,11 +57,6 @@
         android:key="bluetooth"
         android:title="@string/quick_settings_bluetooth_label" />
 
-    <com.android.systemui.tuner.StatusBarSwitch
-        android:icon="@drawable/ic_statusbar_camera"
-        android:key="cameratoggle"
-        android:title="@string/quick_settings_camera_label" />
-
     <!-- nfc -->
     <!-- tty -->
     <!-- speakerphone -->
@@ -142,4 +137,45 @@
         android:title="@string/tuner_low_priority"
         sysui:defValue="false" />
 
+    <com.android.systemui.tuner.TunerSwitch
+        android:icon="@drawable/ic_statusbar_data_disabled"
+        android:key="system:data_disabled_icon"
+        android:title="@string/data_disabled_icon_title"
+        sysui:defValue="true" />
+
+    <com.android.systemui.tuner.TunerSwitch
+        android:icon="@drawable/ic_statusbar_bluetooth_bar"
+        android:key="system:bluetooth_show_battery"
+        android:title="@string/status_bar_bluetooth_battery_title"
+        sysui:defValue="true" />
+
+    <com.android.systemui.tuner.TunerSwitch
+        android:icon="@drawable/ic_statusbar_mic"
+        android:key="enable_camera_privacy_indicator"
+        android:title="@string/mic_camera_privacy_indicator_title"
+        sysui:defValue="true" />
+
+    <com.android.systemui.tuner.TunerSwitch
+        android:icon="@drawable/ic_statusbar_location"
+        android:key="enable_location_privacy_indicator"
+        android:title="@string/location_privacy_indicator_title"
+        sysui:defValue="true" />
+
+    <com.android.systemui.tuner.TunerSwitch
+        android:icon="@drawable/ic_statusbar_cast"
+        android:key="enable_projection_privacy_indicator"
+        android:title="@string/projection_privacy_indicator_title"
+        sysui:defValue="true" />
+
+    <com.android.systemui.tuner.TunerSwitch
+        android:icon="@drawable/ic_statusbar_volte"
+        android:key="show_volte_icon"
+        android:title="@string/statusbar_volte_title"
+        sysui:defValue="false" />
+
+    <com.android.systemui.tuner.TunerSwitch
+        android:icon="@drawable/ic_statusbar_vowifi"
+        android:key="show_vowifi_icon"
+        android:title="@string/statusbar_vowifi_title"
+        sysui:defValue="false" />      
 </PreferenceScreen>
