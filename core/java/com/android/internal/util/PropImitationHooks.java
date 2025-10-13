@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2022-2024 Paranoid Android
- *           (C) 2023 ArrowOS
- *           (C) 2023 The LibreMobileOS Foundation
+ * (C) 2023 ArrowOS
+ * (C) 2023 The LibreMobileOS Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,6 +62,15 @@ public class PropImitationHooks {
     private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
     private static final String DATA_FILE = "gms_certified_props.json";
 
+    // --- START OF FIX ---
+    // These static variables will hold the latest known setting values for the current process.
+    // They act as a safe cache for methods called during early boot.
+    private static boolean sSpoofPlayIntegrity = true;
+    private static boolean sSpoofPhotos = true;
+    private static boolean sSpoofGames = true;
+    private static boolean sDisableStrongIntegrity = false;
+    // --- END OF FIX ---
+
     private static final String PACKAGE_ARCORE = "com.google.ar.core";
     private static final String PACKAGE_FINSKY = "com.android.vending";
     private static final String PACKAGE_GMS = "com.google.android.gms";
@@ -72,6 +81,7 @@ public class PropImitationHooks {
     private static final ComponentName GMS_ADD_ACCOUNT_ACTIVITY = ComponentName.unflattenFromString(
             "com.google.android.gms/.auth.uiflows.minutemaid.MinuteMaidActivity");
 
+    // All device prop maps and package sets remain the same...
     private static final Map<String, Object> propsToChangePixelXL;
     private static final Map<String, Object> propsToChangeROG6;
     private static final Map<String, Object> propsToChangeS24U;
@@ -82,85 +92,20 @@ public class PropImitationHooks {
     private static final Map<String, Object> propsToChangeMI13P;
     private static final Map<String, Object> propsToChangeF5;
     private static final Map<String, Object> propsToChangeBS4;
-
-    // Packages to Spoof as Pixel XL
-    private static final Set<String> packagesToChangePixelXL = Set.of(
-            "com.google.android.apps.photos"
-    );
-
-    // Packages to Spoof as ROG Phone 6
-    private static final Set<String> packagesToChangeROG6 = Set.of(
-            "com.ea.gp.fifamobile",
-            "com.gameloft.android.ANMP.GloftA9HM",
-            "com.madfingergames.legends",
-            "com.pearlabyss.blackdesertm",
-            "com.pearlabyss.blackdesertm.gl"
-    );
-
-    // Packages to Spoof as Samsung Galaxy S24 Ultra
-    private static final Set<String> packagesToChangeS24U = Set.of(
-            "com.pubg.imobile",
-            "com.pubg.krmobile",
-            "com.rekoo.pubgm",
-            "com.tencent.ig",
-            "com.kurogame.wutheringwaves.global",
-            "com.vng.pubgmobile",
-            "com.proxima.dfm"
-    );
-
-    // Packages to Spoof as Lenovo Y700
-    private static final Set<String> packagesToChangeLenovoY700 = Set.of(
-            "com.activision.callofduty.warzone",
-            "com.activision.callofduty.shooter",
-            "com.garena.game.codm",
-            "com.tencent.tmgp.kr.codm",
-            "com.vng.codmvn"
-    );
-
-    // Packages to Spoof as OnePlus 8 Pro
-    private static final Set<String> packagesToChangeOP8P = Set.of(
-            "com.netease.lztgglobal",
-            "com.riotgames.league.wildrift",
-            "com.riotgames.league.wildrifttw",
-            "com.riotgames.league.wildriftvn",
-            "com.riotgames.league.teamfighttactics",
-            "com.riotgames.league.teamfighttacticstw",
-            "com.riotgames.league.teamfighttacticsvn"
-    );
-
-    // Packages to Spoof as OnePlus 9 Pro
-    private static final Set<String> packagesToChangeOP9P = Set.of(
-            "com.epicgames.fortnite",
-            "com.epicgames.portal",
-            "com.tencent.lolm"
-    );
-
-    // Packages to Spoof as Mi 11T Pro
-    private static final Set<String> packagesToChangeMI11TP = Set.of(
-            "com.ea.gp.apexlegendsmobilefps",
-            "com.levelinfinite.hotta.gp",
-            "com.supercell.clashofclans",
-            "com.vng.mlbbvn"
-    );
-
-    // Packages to Spoof as Xiaomi 13 Pro
-    private static final Set<String> packagesToChangeMI13P = Set.of(
-            "com.levelinfinite.sgameGlobal",
-            "com.tencent.tmgp.sgame"
-    );
-
-    // Packages to Spoof as POCO F5
-    private static final Set<String> packagesToChangeF5 = Set.of(
-            "com.dts.freefiremax",
-            "com.dts.freefireth",
-            "com.mobile.legends"
-    );
-
-    // Packages to Spoof as Black Shark 4
-    private static final Set<String> packagesToChangeBS4 = Set.of(
-            "com.proximabeta.mf.uamo"
-    );
-
+    private static final Set<String> packagesToChangePixelXL;
+    private static final Set<String> packagesToChangeROG6;
+    private static final Set<String> packagesToChangeS24U;
+    private static final Set<String> packagesToChangeLenovoY700;
+    private static final Set<String> packagesToChangeOP8P;
+    private static final Set<String> packagesToChangeOP9P;
+    private static final Set<String> packagesToChangeMI11TP;
+    private static final Set<String> packagesToChangeMI13P;
+    private static final Set<String> packagesToChangeF5;
+    private static final Set<String> packagesToChangeBS4;
+    private static final Set<String> sNexusFeatures;
+    private static final Set<String> sPixelFeatures;
+    private static final Set<String> sTensorFeatures;
+    // Static initializer blocks for the above remain the same...
     static {
         propsToChangePixelXL = new HashMap<>();
         propsToChangePixelXL.put("BRAND", "google");
@@ -203,34 +148,21 @@ public class PropImitationHooks {
         propsToChangeBS4 = new HashMap<>();
         propsToChangeBS4.put("MODEL", "2SM-X706B");
         propsToChangeBS4.put("MANUFACTURER", "blackshark");
+        packagesToChangePixelXL = Set.of("com.google.android.apps.photos");
+        packagesToChangeROG6 = Set.of("com.ea.gp.fifamobile", "com.gameloft.android.ANMP.GloftA9HM", "com.madfingergames.legends", "com.pearlabyss.blackdesertm", "com.pearlabyss.blackdesertm.gl");
+        packagesToChangeS24U = Set.of("com.pubg.imobile", "com.pubg.krmobile", "com.rekoo.pubgm", "com.tencent.ig", "com.kurogame.wutheringwaves.global", "com.vng.pubgmobile", "com.proxima.dfm");
+        packagesToChangeLenovoY700 = Set.of("com.activision.callofduty.warzone", "com.activision.callofduty.shooter", "com.garena.game.codm", "com.tencent.tmgp.kr.codm", "com.vng.codmvn");
+        packagesToChangeOP8P = Set.of("com.netease.lztgglobal", "com.riotgames.league.wildrift", "com.riotgames.league.wildrifttw", "com.riotgames.league.wildriftvn", "com.riotgames.league.teamfighttactics", "com.riotgames.league.teamfighttacticstw", "com.riotgames.league.teamfighttacticsvn");
+        packagesToChangeOP9P = Set.of("com.epicgames.fortnite", "com.epicgames.portal", "com.tencent.lolm");
+        packagesToChangeMI11TP = Set.of("com.ea.gp.apexlegendsmobilefps", "com.levelinfinite.hotta.gp", "com.supercell.clashofclans", "com.vng.mlbbvn");
+        packagesToChangeMI13P = Set.of("com.levelinfinite.sgameGlobal", "com.tencent.tmgp.sgame");
+        packagesToChangeF5 = Set.of("com.dts.freefiremax", "com.dts.freefireth", "com.mobile.legends");
+        packagesToChangeBS4 = Set.of("com.proximabeta.mf.uamo");
+        sNexusFeatures = Set.of("NEXUS_PRELOAD", "nexus_preload", "GOOGLE_BUILD", "GOOGLE_EXPERIENCE", "PIXEL_EXPERIENCE");
+        sPixelFeatures = Set.of("PIXEL_2017_PRELOAD", "PIXEL_2018_PRELOAD", "PIXEL_2019_MIDYEAR_PRELOAD", "PIXEL_2019_PRELOAD", "PIXEL_2020_EXPERIENCE", "PIXEL_2020_MIDYEAR_EXPERIENCE");
+        sTensorFeatures = Set.of("PIXEL_2021_EXPERIENCE", "PIXEL_2022_EXPERIENCE", "PIXEL_2022_MIDYEAR_EXPERIENCE", "PIXEL_2023_EXPERIENCE", "PIXEL_2023_MIDYEAR_EXPERIENCE", "PIXEL_2024_EXPERIENCE", "PIXEL_2024_MIDYEAR_EXPERIENCE");
     }
 
-    private static final Set<String> sNexusFeatures = Set.of(
-            "NEXUS_PRELOAD",
-            "nexus_preload",
-            "GOOGLE_BUILD",
-            "GOOGLE_EXPERIENCE",
-            "PIXEL_EXPERIENCE"
-    );
-
-    private static final Set<String> sPixelFeatures = Set.of(
-        "PIXEL_2017_PRELOAD",
-        "PIXEL_2018_PRELOAD",
-        "PIXEL_2019_MIDYEAR_PRELOAD",
-        "PIXEL_2019_PRELOAD",
-        "PIXEL_2020_EXPERIENCE",
-        "PIXEL_2020_MIDYEAR_EXPERIENCE"
-    );
-
-    private static final Set<String> sTensorFeatures = Set.of(
-            "PIXEL_2021_EXPERIENCE",
-            "PIXEL_2022_EXPERIENCE",
-            "PIXEL_2022_MIDYEAR_EXPERIENCE",
-            "PIXEL_2023_EXPERIENCE",
-            "PIXEL_2023_MIDYEAR_EXPERIENCE",
-            "PIXEL_2024_EXPERIENCE",
-            "PIXEL_2024_MIDYEAR_EXPERIENCE"
-    );
 
     private static volatile List<String> sCertifiedProps = new ArrayList<>();
     private static volatile String sStockFp, sNetflixModel;
@@ -247,6 +179,19 @@ public class PropImitationHooks {
             return;
         }
 
+        // --- START OF FIX ---
+        // Remove the aggressive caching. Read the settings every time a process context is available.
+        // This is safe and ensures long-running processes get the latest settings.
+        try {
+            sSpoofPlayIntegrity = Settings.Secure.getInt(context.getContentResolver(), "spoof_play_integrity", 1) == 1;
+            sDisableStrongIntegrity = Settings.Secure.getInt(context.getContentResolver(), "gms_cert_chain", 0) == 1;
+            sSpoofPhotos = Settings.Secure.getInt(context.getContentResolver(), "spoof_photos", 1) == 1;
+            sSpoofGames = Settings.Secure.getInt(context.getContentResolver(), "spoof_games", 1) == 1;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to read settings in setProps, using cached values.", e);
+        }
+        // --- END OF FIX ---
+
         final Resources res = context.getResources();
         if (res == null) {
             Log.e(TAG, "Null resources");
@@ -262,10 +207,6 @@ public class PropImitationHooks {
         sIsFinsky = packageName.equals(PACKAGE_FINSKY);
         sIsPhotos = packageName.equals(PACKAGE_GPHOTOS);
 
-        /* Set Certified Properties for GMSCore
-         * Set Stock Fingerprint for ARCore
-         * Set custom model for Netflix
-         */
         if (sIsGms || sIsFinsky) {
             if (!android.os.Process.isIsolated()) {
                 setPlayIntegrityProps(context);
@@ -282,26 +223,31 @@ public class PropImitationHooks {
 
         Map<String, Object> propsToChange = new HashMap<>();
 
-        if (packagesToChangePixelXL.contains(packageName)) {
+        if (sSpoofPhotos && packagesToChangePixelXL.contains(packageName)) {
             propsToChange.putAll(propsToChangePixelXL);
-        } else if (packagesToChangeROG6.contains(packageName)) {
-            propsToChange.putAll(propsToChangeROG6);
-        } else if (packagesToChangeS24U.contains(packageName)) {
-            propsToChange.putAll(propsToChangeS24U);
-        } else if (packagesToChangeLenovoY700.contains(packageName)) {
-            propsToChange.putAll(propsToChangeLenovoY700);
-        } else if (packagesToChangeOP8P.contains(packageName)) {
-            propsToChange.putAll(propsToChangeOP8P);
-        } else if (packagesToChangeOP9P.contains(packageName)) {
-            propsToChange.putAll(propsToChangeOP9P);
-        } else if (packagesToChangeMI11TP.contains(packageName)) {
-            propsToChange.putAll(propsToChangeMI11TP);
-        } else if (packagesToChangeMI13P.contains(packageName)) {
-            propsToChange.putAll(propsToChangeMI13P);
-        } else if (packagesToChangeF5.contains(packageName)) {
-            propsToChange.putAll(propsToChangeF5);
-        } else if (packagesToChangeBS4.contains(packageName)) {
-            propsToChange.putAll(propsToChangeBS4);
+        }
+
+        if (sSpoofGames) {
+            // All game spoofing logic remains here
+            if (packagesToChangeROG6.contains(packageName)) {
+                propsToChange.putAll(propsToChangeROG6);
+            } else if (packagesToChangeS24U.contains(packageName)) {
+                propsToChange.putAll(propsToChangeS24U);
+            } else if (packagesToChangeLenovoY700.contains(packageName)) {
+                propsToChange.putAll(propsToChangeLenovoY700);
+            } else if (packagesToChangeOP8P.contains(packageName)) {
+                propsToChange.putAll(propsToChangeOP8P);
+            } else if (packagesToChangeOP9P.contains(packageName)) {
+                propsToChange.putAll(propsToChangeOP9P);
+            } else if (packagesToChangeMI11TP.contains(packageName)) {
+                propsToChange.putAll(propsToChangeMI11TP);
+            } else if (packagesToChangeMI13P.contains(packageName)) {
+                propsToChange.putAll(propsToChangeMI13P);
+            } else if (packagesToChangeF5.contains(packageName)) {
+                propsToChange.putAll(propsToChangeF5);
+            } else if (packagesToChangeBS4.contains(packageName)) {
+                propsToChange.putAll(propsToChangeBS4);
+            }
         }
 
         if (DEBUG) Log.d(TAG, "Defining props for: " + packageName);
@@ -312,7 +258,8 @@ public class PropImitationHooks {
             setPropValue(key, value);
         }
     }
-
+    
+    // All other methods from your original file...
     private static void setPropValue(String key, Object value) {
         setPropValue(key, value.toString());
     }
@@ -327,7 +274,6 @@ public class PropImitationHooks {
             }
             Field field = clazz.getDeclaredField(key);
             field.setAccessible(true);
-            // Cast the value to int if it's an integer field, otherwise string.
             field.set(null, field.getType().equals(Integer.TYPE) ? Integer.parseInt(value) : value);
             field.setAccessible(false);
         } catch (Exception e) {
@@ -336,11 +282,15 @@ public class PropImitationHooks {
     }
 
     private static void setPlayIntegrityProps(Context context) {
-        // Guard: isolated processes cannot access content providers (Settings.*).
+        if (!sSpoofPlayIntegrity) {
+            dlog("Play Integrity spoofing is disabled by master toggle.");
+            return;
+        }
+
         if (android.os.Process.isIsolated()) {
             dlog("Skipping setPlayIntegrityProps in isolated process");
             return;
-        }        
+        }
         File dataFile = new File(Environment.getDataSystemDirectory(), DATA_FILE);
         String savedProps = readFromFile(dataFile);
 
@@ -398,7 +348,6 @@ public class PropImitationHooks {
 
     private static void setCertifiedProps() {
         for (String entry : sCertifiedProps) {
-            // Each entry must be of the format FIELD:value
             final String[] fieldAndProp = entry.split(":", 2);
             if (fieldAndProp.length != 2) {
                 Log.e(TAG, "Invalid entry in certified props: " + entry);
@@ -418,24 +367,19 @@ public class PropImitationHooks {
         } catch (Exception e) {
             Log.e(TAG, "Unable to get top activity!", e);
         }
-
         return false;
     }
 
     public static boolean shouldBypassTaskPermission(Context context) {
-        // GMS/Finsky don't have MANAGE_ACTIVITY_TASKS permission
         final int callingUid = Binder.getCallingUid();
-
         try {
             int gmsUid = context.getPackageManager()
                     .getApplicationInfo(PACKAGE_GMS, 0).uid;
             int finskyUid = context.getPackageManager()
                     .getApplicationInfo(PACKAGE_FINSKY, 0).uid;
-
             dlog("shouldBypassTaskPermission: gmsUid:" + gmsUid +
                     " finskyUid:" + finskyUid +
                     " callingUid:" + callingUid);
-
             return (callingUid == gmsUid || callingUid == finskyUid);
         } catch (Exception e) {
             Log.e(TAG, "shouldBypassTaskPermission: unable to get gms/finsky uid", e);
@@ -455,7 +399,6 @@ public class PropImitationHooks {
                 Log.e(TAG, "Error reading from file", e);
             }
         }
-
         return content.toString();
     }
 
@@ -466,19 +409,13 @@ public class PropImitationHooks {
     }
 
     public static void onEngineGetCertificateChain() {
-        Context context = ActivityThread.currentApplication();
-        if (context == null) {
-            Log.e(TAG, "Context is null in onEngineGetCertificateChain");
+        if (!sSpoofPlayIntegrity) {
             return;
         }
-
-        if ((Settings.Secure.getInt(context.getContentResolver(), Settings.Secure.GMS_CERT_CHAIN, 0) == 1)
-                && KeyProviderManager.isKeyboxAvailable()) {
-            dlog("Allowing gms / finsky to get cert chain");
+        if (sDisableStrongIntegrity && KeyProviderManager.isKeyboxAvailable()) {
+            dlog("Allowing gms / finsky to get cert chain (strong integrity disabled)");
             return;
         }
-
-        // Check stack for Play Integrity
         if (isCallerPlayIntegrity()) {
             dlog("Blocked key attestation for play integrity");
             throw new UnsupportedOperationException();
@@ -486,7 +423,7 @@ public class PropImitationHooks {
     }
 
     public static boolean hasSystemFeature(String name, boolean has) {
-        if (sIsPhotos) {
+        if (sSpoofPhotos && sIsPhotos) {
             if (has && !sIsPixelDevice && (sPixelFeatures.stream().anyMatch(name::contains)
                     || sTensorFeatures.stream().anyMatch(name::contains))) {
                 dlog("Blocked system feature " + name + " for Google Photos");
@@ -496,8 +433,11 @@ public class PropImitationHooks {
                 has = true;
             }
         }
-
         return has;
+    }
+
+    public static boolean isPlayIntegritySpoofingEnabled() {
+        return sSpoofPlayIntegrity;
     }
 
     public static void dlog(String msg) {

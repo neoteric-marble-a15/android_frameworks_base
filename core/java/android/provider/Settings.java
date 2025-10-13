@@ -12938,12 +12938,37 @@ public final class Settings {
          */
         public static final String ENABLE_PROJECTION_PRIVACY_INDICATOR = "enable_projection_privacy_indicator";
 
+/**
+         * The master switch to enable spoofing for Play Integrity checks.
+         * 1 = enabled (default), 0 = disabled.
+         * @hide
+         */
+        @Readable
+        public static final String SPOOF_PLAY_INTEGRITY = "spoof_play_integrity";
+
         /**
-         * Whether to allow gms to get certificate chain or not.
+         * Whether to disable forcing strong integrity to pass additional checks.
+         * This is a sub-option for Play Integrity spoofing.
          * @hide
          */
         @Readable
         public static final String GMS_CERT_CHAIN = "gms_cert_chain";
+
+        /**
+         * Whether to enable Pixel XL spoofing for Google Photos to get unlimited storage.
+         * 1 = enabled (default), 0 = disabled.
+         * @hide
+         */
+        @Readable
+        public static final String SPOOF_PHOTOS = "spoof_photos";
+
+        /**
+         * Whether to enable device property spoofing for specific games to unlock higher settings.
+         * 1 = enabled (default), 0 = disabled.
+         * @hide
+         */
+        @Readable
+        public static final String SPOOF_GAMES = "spoof_games";
 
         /**
          * Keys we no longer back up under the current schema, but want to continue to

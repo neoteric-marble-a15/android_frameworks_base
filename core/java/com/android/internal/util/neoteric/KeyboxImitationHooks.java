@@ -5,6 +5,11 @@
  */
 package com.android.internal.util.neoteric;
 
+// --- START OF BOOTLOOP FIX ---
+// No longer importing Context or Settings. Instead, import PropImitationHooks.
+import com.android.internal.util.PropImitationHooks;
+// --- END OF BOOTLOOP FIX ---
+
 import android.hardware.security.keymint.Algorithm;
 import android.hardware.security.keymint.KeyParameter;
 import android.hardware.security.keymint.KeyParameterValue;
@@ -35,6 +40,14 @@ public class KeyboxImitationHooks {
     private static boolean mSuccess = false;
 
     public static KeyEntryResponse onGetKeyEntry(KeyDescriptor descriptor) {
+        // --- START OF BOOTLOOP FIX ---
+        // Safely check the cached value from PropImitationHooks
+        if (!PropImitationHooks.isPlayIntegritySpoofingEnabled()) {
+            dlog("Keybox spoofing is disabled by master toggle");
+            return null;
+        }
+        // --- END OF BOOTLOOP FIX ---
+
         if (!KeyProviderManager.isKeyboxAvailable()) {
             return null;
         }
@@ -53,6 +66,14 @@ public class KeyboxImitationHooks {
     }
 
     public static KeyMetadata generateKey(IKeystoreSecurityLevel level, KeyDescriptor descriptor, Collection<KeyParameter> args) {
+        // --- START OF BOOTLOOP FIX ---
+        // Safely check the cached value from PropImitationHooks
+        if (!PropImitationHooks.isPlayIntegritySpoofingEnabled()) {
+            dlog("Keybox spoofing is disabled by master toggle");
+            return null;
+        }
+        // --- END OF BOOTLOOP FIX ---
+
         if (!KeyProviderManager.isKeyboxAvailable()) {
             return null;
         }
