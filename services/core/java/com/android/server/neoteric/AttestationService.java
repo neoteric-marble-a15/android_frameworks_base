@@ -13,17 +13,13 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.os.Environment;
-import android.os.SystemProperties;
+import android.provider.Settings;
 import android.util.Log;
 
 import com.android.server.SystemService;
 import com.android.internal.util.neoteric.NeotericUtils;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -35,9 +31,7 @@ import java.util.concurrent.TimeUnit;
 public final class AttestationService extends SystemService {
 
     private static final String TAG = AttestationService.class.getSimpleName();
-    private static final String API = "https://raw.githubusercontent.com/neoteric-marble-a15/android_vendor_gms_spoof/refs/heads/master/gms_certified_props.json";
-
-    private static final String DATA_FILE = "gms_certified_props.json";
+    private static final String API = "https://raw.githubusercontent.com/Neoteric-OS/android_vendor_gms_spoof/refs/heads/master/gms_certified_props.json";
 
     private static final long INITIAL_DELAY = 0;
     private static final long INTERVAL = 5;
@@ -45,13 +39,11 @@ public final class AttestationService extends SystemService {
     private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
 
     private final Context mContext;
-    private final File mDataFile;
     private final ScheduledExecutorService mScheduler;
 
     public AttestationService(Context context) {
         super(context);
         mContext = context;
-        mDataFile = new File(Environment.getDataSystemDirectory(), DATA_FILE);
         mScheduler = Executors.newSingleThreadScheduledExecutor();
     }
 
@@ -60,38 +52,11 @@ public final class AttestationService extends SystemService {
 
     @Override
     public void onBootPhase(int phase) {
-        if (NeotericUtils.isPackageInstalled(mContext, "com.google.android.gms") 
+        if (NeotericUtils.isPackageInstalled(mContext, "com.google.android.gms")
                 && phase == PHASE_BOOT_COMPLETED) {
             Log.i(TAG, "Scheduling the service");
             mScheduler.scheduleAtFixedRate(
                     new FetchGmsCertifiedProps(), INITIAL_DELAY, INTERVAL, TimeUnit.MINUTES);
-        }
-    }
-
-    private String readFromFile(File file) {
-        StringBuilder content = new StringBuilder();
-
-        if (file.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-                String line;
-
-                while ((line = reader.readLine()) != null) {
-                    content.append(line);
-                }
-            } catch (IOException e) {
-                Log.e(TAG, "Error reading from file", e);
-            }
-        }
-        return content.toString();
-    }
-
-    private void writeToFile(File file, String data) {
-        try (FileWriter writer = new FileWriter(file)) {
-            writer.write(data);
-            // Set -rw-r--r-- (644) permission to make it readable by others.
-            file.setReadable(true, false);
-        } catch (IOException e) {
-            Log.e(TAG, "Error writing to file", e);
         }
     }
 
@@ -152,12 +117,12 @@ public final class AttestationService extends SystemService {
                     return;
                 }
 
-                String savedProps = readFromFile(mDataFile);
+                String savedProps = Settings.Secure.getString(mContext.getContentResolver(), Settings.Secure.FETCHED_PIF);
                 String props = fetchProps();
 
                 if (props != null && !savedProps.equals(props)) {
                     dlog("Found new props");
-                    writeToFile(mDataFile, props);
+                    Settings.Secure.putString(mContext.getContentResolver(), Settings.Secure.FETCHED_PIF, props);
                     dlog("FetchGmsCertifiedProps completed");
                 } else {
                     dlog("No change in props");

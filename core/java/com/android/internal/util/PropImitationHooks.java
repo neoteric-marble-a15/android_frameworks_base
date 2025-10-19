@@ -24,10 +24,11 @@ import android.app.Application;
 import android.app.TaskStackListener;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.os.Build;
 import android.os.Binder;
-import android.os.Environment;
 import android.os.Process;
 import android.provider.Settings;
 import android.text.TextUtils;
@@ -39,10 +40,6 @@ import com.android.internal.util.neoteric.KeyProviderManager;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -60,16 +57,10 @@ public class PropImitationHooks {
 
     private static final String TAG = "PropImitationHooks";
     private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
-    private static final String DATA_FILE = "gms_certified_props.json";
 
-    // --- START OF FIX ---
-    // These static variables will hold the latest known setting values for the current process.
-    // They act as a safe cache for methods called during early boot.
     private static boolean sSpoofPlayIntegrity = true;
     private static boolean sSpoofPhotos = true;
     private static boolean sSpoofGames = true;
-    private static boolean sDisableStrongIntegrity = false;
-    // --- END OF FIX ---
 
     private static final String PACKAGE_ARCORE = "com.google.ar.core";
     private static final String PACKAGE_FINSKY = "com.android.vending";
@@ -81,7 +72,6 @@ public class PropImitationHooks {
     private static final ComponentName GMS_ADD_ACCOUNT_ACTIVITY = ComponentName.unflattenFromString(
             "com.google.android.gms/.auth.uiflows.minutemaid.MinuteMaidActivity");
 
-    // All device prop maps and package sets remain the same...
     private static final Map<String, Object> propsToChangePixelXL;
     private static final Map<String, Object> propsToChangeROG6;
     private static final Map<String, Object> propsToChangeS24U;
@@ -105,7 +95,7 @@ public class PropImitationHooks {
     private static final Set<String> sNexusFeatures;
     private static final Set<String> sPixelFeatures;
     private static final Set<String> sTensorFeatures;
-    // Static initializer blocks for the above remain the same...
+
     static {
         propsToChangePixelXL = new HashMap<>();
         propsToChangePixelXL.put("BRAND", "google");
@@ -114,8 +104,8 @@ public class PropImitationHooks {
         propsToChangePixelXL.put("PRODUCT", "marlin");
         propsToChangePixelXL.put("HARDWARE", "marlin");
         propsToChangePixelXL.put("MODEL", "Pixel XL");
-        propsToChangePixelXL.put("ID", "QP1A.191005.007.A3");
-        propsToChangePixelXL.put("FINGERPRINT", "google/marlin/marlin:10/QP1A.191005.007.A3/5972272:user/release-keys");
+        propsToChangePixelXL.put("ID", "QP1A.190505.007.A3");
+        propsToChangePixelXL.put("FINGERPRINT", "google/marlin/marlin:10/QP1A.190505.007.A3/5972272:user/release-keys");
         propsToChangeROG6 = new HashMap<>();
         propsToChangeROG6.put("BRAND", "asus");
         propsToChangeROG6.put("MANUFACTURER", "asus");
@@ -163,7 +153,6 @@ public class PropImitationHooks {
         sTensorFeatures = Set.of("PIXEL_2021_EXPERIENCE", "PIXEL_2022_EXPERIENCE", "PIXEL_2022_MIDYEAR_EXPERIENCE", "PIXEL_2023_EXPERIENCE", "PIXEL_2023_MIDYEAR_EXPERIENCE", "PIXEL_2024_EXPERIENCE", "PIXEL_2024_MIDYEAR_EXPERIENCE");
     }
 
-
     private static volatile List<String> sCertifiedProps = new ArrayList<>();
     private static volatile String sStockFp, sNetflixModel;
 
@@ -179,18 +168,13 @@ public class PropImitationHooks {
             return;
         }
 
-        // --- START OF FIX ---
-        // Remove the aggressive caching. Read the settings every time a process context is available.
-        // This is safe and ensures long-running processes get the latest settings.
         try {
             sSpoofPlayIntegrity = Settings.Secure.getInt(context.getContentResolver(), "spoof_play_integrity", 1) == 1;
-            sDisableStrongIntegrity = Settings.Secure.getInt(context.getContentResolver(), "gms_cert_chain", 0) == 1;
             sSpoofPhotos = Settings.Secure.getInt(context.getContentResolver(), "spoof_photos", 1) == 1;
             sSpoofGames = Settings.Secure.getInt(context.getContentResolver(), "spoof_games", 1) == 1;
         } catch (Exception e) {
             Log.e(TAG, "Failed to read settings in setProps, using cached values.", e);
         }
-        // --- END OF FIX ---
 
         final Resources res = context.getResources();
         if (res == null) {
@@ -228,7 +212,6 @@ public class PropImitationHooks {
         }
 
         if (sSpoofGames) {
-            // All game spoofing logic remains here
             if (packagesToChangeROG6.contains(packageName)) {
                 propsToChange.putAll(propsToChangeROG6);
             } else if (packagesToChangeS24U.contains(packageName)) {
@@ -258,16 +241,15 @@ public class PropImitationHooks {
             setPropValue(key, value);
         }
     }
-    
-    // All other methods from your original file...
+
     private static void setPropValue(String key, Object value) {
         setPropValue(key, value.toString());
     }
 
     private static void setPropValue(String key, String value) {
         try {
-            dlog("Setting prop " + key + " to " + value.toString());
-            Class clazz = Build.class;
+            dlog("Setting prop " + key + " to " + value);
+            Class<?> clazz = Build.class;
             if (key.startsWith("VERSION.")) {
                 clazz = Build.VERSION.class;
                 key = key.substring(8);
@@ -291,16 +273,23 @@ public class PropImitationHooks {
             dlog("Skipping setPlayIntegrityProps in isolated process");
             return;
         }
-        File dataFile = new File(Environment.getDataSystemDirectory(), DATA_FILE);
-        String savedProps = readFromFile(dataFile);
-
-        if (TextUtils.isEmpty(savedProps)) {
-            Log.d(TAG, "Parsing props locally - data file unavailable");
-            sCertifiedProps = Arrays.asList(context.getResources().getStringArray(R.array.config_certifiedBuildProperties));
+        
+        String savedProps = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.PIF_DATA);
+        if (savedProps == null || TextUtils.isEmpty(savedProps)) {
+            dlog("User PIF is empty, trying fetched PIF");
+            savedProps = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.FETCHED_PIF);
         } else {
-            Log.d(TAG, "Parsing props fetched by attestation service");
+            dlog("Using user-provided PIF");
+        }
+
+        if (savedProps == null || TextUtils.isEmpty(savedProps)) {
+            dlog("No saved props found, using built-in array");
+            sCertifiedProps = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.config_certifiedBuildProperties)));
+        } else {
+            dlog("Parsing props from Settings.Secure");
             try {
                 JSONObject parsedProps = new JSONObject(savedProps);
+                sCertifiedProps.clear();
                 Iterator<String> keys = parsedProps.keys();
                 while (keys.hasNext()) {
                     String key = keys.next();
@@ -308,14 +297,13 @@ public class PropImitationHooks {
                     sCertifiedProps.add(key + ":" + value);
                 }
             } catch (JSONException e) {
-                Log.e(TAG, "Error parsing JSON data", e);
-                Log.d(TAG, "Parsing props locally as fallback");
-                sCertifiedProps = Arrays.asList(context.getResources().getStringArray(R.array.config_certifiedBuildProperties));
+                Log.e(TAG, "Error parsing JSON data from settings, falling back to built-in.", e);
+                sCertifiedProps = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.config_certifiedBuildProperties)));
             }
         }
 
         if (sCertifiedProps.isEmpty()) {
-            dlog("Certified props are not set");
+            dlog("Certified props are not set, aborting.");
             return;
         }
 
@@ -325,8 +313,7 @@ public class PropImitationHooks {
             public void onTaskStackChanged() {
                 final boolean is = isGmsAddAccountActivityOnTop();
                 if (is ^ was) {
-                    dlog("GmsAddAccountActivityOnTop is:" + is + " was:" + was +
-                            ", killing myself!"); // process will restart automatically later
+                    dlog("GmsAddAccountActivityOnTop is:" + is + " was:" + was + ", killing myself!");
                     Process.killProcess(Process.myPid());
                 }
             }
@@ -387,21 +374,6 @@ public class PropImitationHooks {
         }
     }
 
-    private static String readFromFile(File file) {
-        StringBuilder content = new StringBuilder();
-        if (file.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    content.append(line);
-                }
-            } catch (IOException e) {
-                Log.e(TAG, "Error reading from file", e);
-            }
-        }
-        return content.toString();
-    }
-
     private static boolean isCallerPlayIntegrity() {
         return Arrays.stream(Thread.currentThread().getStackTrace())
                 .map(StackTraceElement::getClassName)
@@ -412,10 +384,19 @@ public class PropImitationHooks {
         if (!sSpoofPlayIntegrity) {
             return;
         }
-        if (sDisableStrongIntegrity && KeyProviderManager.isKeyboxAvailable()) {
+
+        Context context = ActivityThread.currentApplication();
+        if (context == null) {
+            Log.e(TAG, "Context is null in onEngineGetCertificateChain");
+            return;
+        }
+        final boolean disableStrongIntegrity = Settings.Secure.getInt(context.getContentResolver(), "gms_cert_chain", 0) == 1;
+
+        if (disableStrongIntegrity && KeyProviderManager.isKeyboxAvailable()) {
             dlog("Allowing gms / finsky to get cert chain (strong integrity disabled)");
             return;
         }
+
         if (isCallerPlayIntegrity()) {
             dlog("Blocked key attestation for play integrity");
             throw new UnsupportedOperationException();
