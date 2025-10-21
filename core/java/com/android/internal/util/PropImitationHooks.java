@@ -19,7 +19,7 @@
 package com.android.internal.util;
 
 import android.app.ActivityTaskManager;
-import android.app.ActivityThread;
+import android.app.ActivityThread; // Added import
 import android.app.Application;
 import android.app.TaskStackListener;
 import android.content.ComponentName;
@@ -29,8 +29,9 @@ import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.os.Build;
 import android.os.Binder;
+// import android.os.Environment; // Not used in final version
 import android.os.Process;
-import android.provider.Settings;
+import android.provider.Settings; // Added import
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -58,6 +59,7 @@ public class PropImitationHooks {
     private static final String TAG = "PropImitationHooks";
     private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
 
+    // Kept from your file
     private static boolean sSpoofPlayIntegrity = true;
     private static boolean sSpoofPhotos = true;
     private static boolean sSpoofGames = true;
@@ -67,11 +69,12 @@ public class PropImitationHooks {
     private static final String PACKAGE_GMS = "com.google.android.gms";
     private static final String PROCESS_GMS_UNSTABLE = PACKAGE_GMS + ".unstable";
     private static final String PACKAGE_NETFLIX = "com.netflix.mediaclient";
-    private static final String PACKAGE_GPHOTOS = "com.google.android.apps.photos";
+    private static final String PACKAGE_GPHOTOS = "com.google.android.apps.photos"; // Kept from your file
 
     private static final ComponentName GMS_ADD_ACCOUNT_ACTIVITY = ComponentName.unflattenFromString(
             "com.google.android.gms/.auth.uiflows.minutemaid.MinuteMaidActivity");
 
+    // All maps and sets updated from target file
     private static final Map<String, Object> propsToChangePixelXL;
     private static final Map<String, Object> propsToChangeROG6;
     private static final Map<String, Object> propsToChangeS24U;
@@ -92,11 +95,12 @@ public class PropImitationHooks {
     private static final Set<String> packagesToChangeMI13P;
     private static final Set<String> packagesToChangeF5;
     private static final Set<String> packagesToChangeBS4;
-    private static final Set<String> sNexusFeatures;
+    private static final Set<String> sNexusFeatures; // Kept from your file
     private static final Set<String> sPixelFeatures;
     private static final Set<String> sTensorFeatures;
 
     static {
+        // --- Updated Props Start --- (Using target's values, including Pixel XL ID/Fingerprint)
         propsToChangePixelXL = new HashMap<>();
         propsToChangePixelXL.put("BRAND", "google");
         propsToChangePixelXL.put("MANUFACTURER", "Google");
@@ -104,8 +108,8 @@ public class PropImitationHooks {
         propsToChangePixelXL.put("PRODUCT", "marlin");
         propsToChangePixelXL.put("HARDWARE", "marlin");
         propsToChangePixelXL.put("MODEL", "Pixel XL");
-        propsToChangePixelXL.put("ID", "QP1A.190505.007.A3");
-        propsToChangePixelXL.put("FINGERPRINT", "google/marlin/marlin:10/QP1A.190505.007.A3/5972272:user/release-keys");
+        propsToChangePixelXL.put("ID", "QP1A.191005.007.A3"); // From target
+        propsToChangePixelXL.put("FINGERPRINT", "google/marlin/marlin:10/QP1A.191005.007.A3/5972272:user/release-keys"); // From target
         propsToChangeROG6 = new HashMap<>();
         propsToChangeROG6.put("BRAND", "asus");
         propsToChangeROG6.put("MANUFACTURER", "asus");
@@ -138,6 +142,7 @@ public class PropImitationHooks {
         propsToChangeBS4 = new HashMap<>();
         propsToChangeBS4.put("MODEL", "2SM-X706B");
         propsToChangeBS4.put("MANUFACTURER", "blackshark");
+
         packagesToChangePixelXL = Set.of("com.google.android.apps.photos");
         packagesToChangeROG6 = Set.of("com.ea.gp.fifamobile", "com.gameloft.android.ANMP.GloftA9HM", "com.madfingergames.legends", "com.pearlabyss.blackdesertm", "com.pearlabyss.blackdesertm.gl");
         packagesToChangeS24U = Set.of("com.pubg.imobile", "com.pubg.krmobile", "com.rekoo.pubgm", "com.tencent.ig", "com.kurogame.wutheringwaves.global", "com.vng.pubgmobile", "com.proxima.dfm");
@@ -148,7 +153,12 @@ public class PropImitationHooks {
         packagesToChangeMI13P = Set.of("com.levelinfinite.sgameGlobal", "com.tencent.tmgp.sgame");
         packagesToChangeF5 = Set.of("com.dts.freefiremax", "com.dts.freefireth", "com.mobile.legends");
         packagesToChangeBS4 = Set.of("com.proximabeta.mf.uamo");
+        // --- Updated Props End ---
+        
+        // Kept from your file (for hasSystemFeature)
         sNexusFeatures = Set.of("NEXUS_PRELOAD", "nexus_preload", "GOOGLE_BUILD", "GOOGLE_EXPERIENCE", "PIXEL_EXPERIENCE");
+        
+        // Updated from target file
         sPixelFeatures = Set.of("PIXEL_2017_PRELOAD", "PIXEL_2018_PRELOAD", "PIXEL_2019_MIDYEAR_PRELOAD", "PIXEL_2019_PRELOAD", "PIXEL_2020_EXPERIENCE", "PIXEL_2020_MIDYEAR_EXPERIENCE");
         sTensorFeatures = Set.of("PIXEL_2021_EXPERIENCE", "PIXEL_2022_EXPERIENCE", "PIXEL_2022_MIDYEAR_EXPERIENCE", "PIXEL_2023_EXPERIENCE", "PIXEL_2023_MIDYEAR_EXPERIENCE", "PIXEL_2024_EXPERIENCE", "PIXEL_2024_MIDYEAR_EXPERIENCE");
     }
@@ -157,7 +167,9 @@ public class PropImitationHooks {
     private static volatile String sStockFp, sNetflixModel;
 
     private static volatile String sProcessName;
-    private static volatile boolean sIsPixelDevice, sIsGms, sIsFinsky, sIsPhotos;
+    // Removed sIsPixelDevice as it's set locally in setProps
+    // Kept sIsGms, sIsFinsky from target, added sIsPhotos from your file
+    private static volatile boolean sIsGms, sIsFinsky, sIsPhotos;
 
     public static void setProps(Context context) {
         final String packageName = context.getPackageName();
@@ -168,6 +180,7 @@ public class PropImitationHooks {
             return;
         }
 
+        // Kept from your file
         try {
             sSpoofPlayIntegrity = Settings.Secure.getInt(context.getContentResolver(), "spoof_play_integrity", 1) == 1;
             sSpoofPhotos = Settings.Secure.getInt(context.getContentResolver(), "spoof_photos", 1) == 1;
@@ -186,14 +199,19 @@ public class PropImitationHooks {
         sNetflixModel = res.getString(R.string.config_netflixSpoofModel);
 
         sProcessName = processName;
-        sIsPixelDevice = Build.MANUFACTURER.equals("Google") && Build.MODEL.contains("Pixel");
+        // sIsPixelDevice is set locally in hasSystemFeature if needed
         sIsGms = packageName.equals(PACKAGE_GMS) && processName.equals(PROCESS_GMS_UNSTABLE);
         sIsFinsky = packageName.equals(PACKAGE_FINSKY);
-        sIsPhotos = packageName.equals(PACKAGE_GPHOTOS);
+        sIsPhotos = packageName.equals(PACKAGE_GPHOTOS); // Kept from your file
 
         if (sIsGms || sIsFinsky) {
             if (!android.os.Process.isIsolated()) {
-                setPlayIntegrityProps(context);
+                // Kept your master toggle logic
+                if (sSpoofPlayIntegrity) {
+                    setPlayIntegrityProps(context);
+                } else {
+                    dlog("Play Integrity spoofing is disabled by master toggle.");
+                }
             } else {
                 dlog("Not setting Play Integrity props in isolated process");
             }
@@ -207,10 +225,12 @@ public class PropImitationHooks {
 
         Map<String, Object> propsToChange = new HashMap<>();
 
+        // Kept logic from your file
         if (sSpoofPhotos && packagesToChangePixelXL.contains(packageName)) {
             propsToChange.putAll(propsToChangePixelXL);
         }
 
+        // Kept logic from your file
         if (sSpoofGames) {
             if (packagesToChangeROG6.contains(packageName)) {
                 propsToChange.putAll(propsToChangeROG6);
@@ -264,32 +284,27 @@ public class PropImitationHooks {
     }
 
     private static void setPlayIntegrityProps(Context context) {
-        if (!sSpoofPlayIntegrity) {
-            dlog("Play Integrity spoofing is disabled by master toggle.");
-            return;
-        }
-
+        // sSpoofPlayIntegrity check is in setProps
+        
         if (android.os.Process.isIsolated()) {
             dlog("Skipping setPlayIntegrityProps in isolated process");
             return;
         }
         
+        // Using target's (simpler) logic for getting props
         String savedProps = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.PIF_DATA);
         if (savedProps == null || TextUtils.isEmpty(savedProps)) {
-            dlog("User PIF is empty, trying fetched PIF");
             savedProps = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.FETCHED_PIF);
-        } else {
-            dlog("Using user-provided PIF");
         }
 
         if (savedProps == null || TextUtils.isEmpty(savedProps)) {
-            dlog("No saved props found, using built-in array");
-            sCertifiedProps = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.config_certifiedBuildProperties)));
+            dlog("Parsing props locally - fetched pif / user provided pif unavailable");
+            sCertifiedProps = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.config_certifiedBuildProperties))); // Use new ArrayList
         } else {
-            dlog("Parsing props from Settings.Secure");
+            dlog("Parsing props fetched / provided by user");
             try {
                 JSONObject parsedProps = new JSONObject(savedProps);
-                sCertifiedProps.clear();
+                sCertifiedProps.clear(); // Clear before adding
                 Iterator<String> keys = parsedProps.keys();
                 while (keys.hasNext()) {
                     String key = keys.next();
@@ -297,13 +312,14 @@ public class PropImitationHooks {
                     sCertifiedProps.add(key + ":" + value);
                 }
             } catch (JSONException e) {
-                Log.e(TAG, "Error parsing JSON data from settings, falling back to built-in.", e);
-                sCertifiedProps = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.config_certifiedBuildProperties)));
+                Log.e(TAG, "Error parsing JSON data", e); // Keep target's error message
+                dlog("Parsing props locally as fallback");
+                sCertifiedProps = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.config_certifiedBuildProperties))); // Use new ArrayList
             }
         }
 
         if (sCertifiedProps.isEmpty()) {
-            dlog("Certified props are not set, aborting.");
+            dlog("Certified props are not set");
             return;
         }
 
@@ -313,7 +329,8 @@ public class PropImitationHooks {
             public void onTaskStackChanged() {
                 final boolean is = isGmsAddAccountActivityOnTop();
                 if (is ^ was) {
-                    dlog("GmsAddAccountActivityOnTop is:" + is + " was:" + was + ", killing myself!");
+                    dlog("GmsAddAccountActivityOnTop is:" + is + " was:" + was +
+                            ", killing myself!"); // process will restart automatically later
                     Process.killProcess(Process.myPid());
                 }
             }
@@ -373,37 +390,49 @@ public class PropImitationHooks {
             return false;
         }
     }
-
+    
+    // --- Corrected helper method from target ROM ---
+    // (Using the name from the target file you provided)
     private static boolean isCallerPlayIntegrity() {
         return Arrays.stream(Thread.currentThread().getStackTrace())
                 .map(StackTraceElement::getClassName)
                 .anyMatch(name -> name.toLowerCase(Locale.US).contains("droidguard"));
     }
 
+    // --- Corrected method from target ROM ---
     public static void onEngineGetCertificateChain() {
+        // Kept your master toggle check
         if (!sSpoofPlayIntegrity) {
+             dlog("Play Integrity spoofing is disabled by master toggle.");
             return;
         }
 
+        // Logic from the target file you provided
         Context context = ActivityThread.currentApplication();
         if (context == null) {
             Log.e(TAG, "Context is null in onEngineGetCertificateChain");
             return;
         }
-        final boolean disableStrongIntegrity = Settings.Secure.getInt(context.getContentResolver(), "gms_cert_chain", 0) == 1;
-
-        if (disableStrongIntegrity && KeyProviderManager.isKeyboxAvailable()) {
-            dlog("Allowing gms / finsky to get cert chain (strong integrity disabled)");
+     
+        // Check for GMS_CERT_CHAIN toggle and Keybox availability
+        if ((Settings.Secure.getInt(context.getContentResolver(), Settings.Secure.GMS_CERT_CHAIN, 0) == 1)
+                && KeyProviderManager.isKeyboxAvailable()) {
+            dlog("Allowing gms / finsky to get cert chain");
             return;
         }
 
+        // Check stack for Play Integrity using the helper
         if (isCallerPlayIntegrity()) {
             dlog("Blocked key attestation for play integrity");
             throw new UnsupportedOperationException();
         }
     }
+    // --- End of corrected section ---
 
+    // Kept from your file
     public static boolean hasSystemFeature(String name, boolean has) {
+        // Need to define sIsPixelDevice locally if it's not a member variable
+        boolean sIsPixelDevice = Build.MANUFACTURER.equals("Google") && Build.MODEL.contains("Pixel");
         if (sSpoofPhotos && sIsPhotos) {
             if (has && !sIsPixelDevice && (sPixelFeatures.stream().anyMatch(name::contains)
                     || sTensorFeatures.stream().anyMatch(name::contains))) {
@@ -417,6 +446,7 @@ public class PropImitationHooks {
         return has;
     }
 
+    // Kept from your file
     public static boolean isPlayIntegritySpoofingEnabled() {
         return sSpoofPlayIntegrity;
     }
