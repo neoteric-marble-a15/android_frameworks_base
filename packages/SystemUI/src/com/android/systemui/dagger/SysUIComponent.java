@@ -24,7 +24,6 @@ import com.android.systemui.SystemUIAppComponentFactoryBase;
 import com.android.systemui.dagger.qualifiers.PerUser;
 import com.android.systemui.dump.DumpManager;
 import com.android.systemui.keyguard.KeyguardSliceProvider;
-import com.android.systemui.media.MediaViewController;
 import com.android.systemui.people.PeopleProvider;
 import com.android.systemui.startable.Dependencies;
 import com.android.systemui.statusbar.NotificationInsetsModule;
@@ -189,7 +188,4 @@ public interface SysUIComponent {
      */
     @SysUISingleton
     KeyguardSmartspaceController createKeyguardSmartspaceController();
-
-    @SysUISingleton
-    MediaViewController mediaViewController();
 }
