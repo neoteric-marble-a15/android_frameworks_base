@@ -74,6 +74,7 @@
 
     <!-- Ringer QS tile -->
     <dimen name="qs_ringer_tile_dot_radius">2dp</dimen>
+    <dimen name="qs_ringer_corner_radius">28dp</dimen>    
 
         <!-- HD calling icon -->
     <dimen name="signal_icon_viewport_size">24dp</dimen>
