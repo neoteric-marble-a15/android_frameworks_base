@@ -106,7 +106,7 @@ fun Intent.toNetworkNameModel(separator: String): NetworkNameModel? {
         str.append(plmn)
         strData.append(plmn)
     }
-    if (showSpn && spn != null) {
+    if (showSpn && spn != null && !str.toString().lowercase().contains(spn.lowercase())) {
         if (str.isNotEmpty()) {
             str.append(separator)
         }
