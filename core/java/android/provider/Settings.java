@@ -13492,18 +13492,18 @@ public final class Settings {
          * @hide
          */
         public static final String NAVIGATION_BAR_HINT = "navigation_bar_hint";
-        
+
         /**
          * Show navigation space below IME
          * @hide
          */
-        public static final String NAVBAR_IME_SPACE = "navbar_ime_space";
+        public static final String NAVBAR_IME_SPACE = "navbar_ime_space";        
 
         /**
          * Whether tethering is allowed to use VPN upstreams
          * @hide
          */
-        public static final String TETHERING_ALLOW_VPN_UPSTREAMS = "tethering_allow_vpn_upstreams";
+        public static final String TETHERING_ALLOW_VPN_UPSTREAMS = "tethering_allow_vpn_upstreams";           
     }
 
     /**
