@@ -23,6 +23,7 @@ import android.Manifest;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.IActivityManager;
+import android.app.role.RoleManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.res.Resources;
@@ -43,6 +44,7 @@ import android.os.PowerManager;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemClock;
+import android.os.UserHandle;
 import android.text.TextUtils;
 import android.view.IWindowManager;
 import android.view.WindowManagerGlobal;
@@ -64,6 +66,8 @@ import java.util.List;
 
 import com.android.internal.statusbar.IStatusBarService;
 import android.content.pm.PackageManager.NameNotFoundException;
+
+import com.android.internal.util.CollectionUtils;
 
 /**
  * Some custom utilities
@@ -349,5 +353,19 @@ public class NeotericUtils {
             }
             return null;
         }
+    }
+
+    public static String getDefaultLauncher(Context context) {
+        final RoleManager roleManager = context.getSystemService(RoleManager.class);
+        final String packageName = CollectionUtils.firstOrNull(
+                roleManager.getRoleHolders(RoleManager.ROLE_HOME));
+        return packageName != null ? packageName : "";
+    }
+
+    public static void forceStopDefaultLauncher(Context context) {
+        final ActivityManager activityManager = context.getSystemService(ActivityManager.class);
+        try {
+            activityManager.forceStopPackageAsUser(getDefaultLauncher(context), UserHandle.USER_CURRENT);
+        } catch (Exception ignored) {}
     }
 }
