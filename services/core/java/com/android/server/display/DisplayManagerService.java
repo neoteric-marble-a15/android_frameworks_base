@@ -5180,6 +5180,13 @@ public final class DisplayManagerService extends SystemService {
             mExternalDisplayPolicy.onPresentation(displayId, isShown);
         }
 
+        @Override
+        public int getGroupIdForDisplay(int displayId) {
+            synchronized (mSyncRoot) {
+                return mLogicalDisplayMapper.getDisplayGroupIdFromDisplayIdLocked(displayId);
+            }
+        }
+
         public void createFreeformLocked(String name, ILMOFreeformDisplayCallback callback,
                 int width, int height, int densityDpi, boolean secure, boolean ownContentOnly,
                 boolean shouldShowSystemDecorations, Surface surface, float refreshRate,

@@ -79,11 +79,16 @@ class TaskOperations {
     IBinder closeTask(WindowContainerToken taskToken, WindowContainerTransaction wct) {
         wct.removeTask(taskToken);
         if (Transitions.ENABLE_SHELL_TRANSITIONS) {
-            return mTransitionStarter.startRemoveTransition(wct);
+            mTransitionStarter.startRemoveTransition(wct);
+            return null;
         } else {
             mSyncQueue.queue(wct);
             return null;
         }
+    }
+
+    void minimizeTask(WindowContainerToken taskToken) {
+        minimizeTask(taskToken, -1 /* taskId */, false /* isLastTask */);
     }
 
     IBinder minimizeTask(WindowContainerToken taskToken, int taskId, boolean isLastTask) {
@@ -98,7 +103,8 @@ class TaskOperations {
         wct.setAlwaysOnTop(taskToken, false);
         wct.reorder(taskToken, false);
         if (Transitions.ENABLE_SHELL_TRANSITIONS) {
-            return mTransitionStarter.startMinimizedModeTransition(wct, taskId, isLastTask);
+            mTransitionStarter.startMinimizedModeTransition(wct);
+            return null;
         } else {
             mSyncQueue.queue(wct);
             return null;
